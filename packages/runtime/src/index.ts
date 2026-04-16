@@ -9,7 +9,13 @@ import type {
   RunRecord,
   StoredRoutine,
 } from "@open-routines/core";
-import { isoNow, sleep } from "@open-routines/core";
+import {
+  isoNow,
+  sleep,
+  classifyError,
+  DEFAULT_BACKOFF_SCHEDULE,
+} from "@open-routines/core";
+import type { ClassifiedError } from "@open-routines/core";
 import { getProviderManifest, invokeTextWithProvider, resolveProviderSecret } from "@open-routines/providers";
 import { RoutineStore, computeRoutineLogPath } from "@open-routines/store";
 
@@ -44,9 +50,14 @@ export async function executeRoutine(
 
   const retryPolicy = routine.document.policy?.retry;
   const maxAttempts = retryPolicy?.maxAttempts ?? 1;
-  const backoffSeconds = retryPolicy?.backoffSeconds ?? 5;
+  const backoffSchedule =
+    retryPolicy?.backoffSchedule ??
+    (retryPolicy?.backoffSeconds != null
+      ? Array(maxAttempts).fill(retryPolicy.backoffSeconds)
+      : DEFAULT_BACKOFF_SCHEDULE);
   let attempts = 0;
   let lastError: Error | null = null;
+  let lastClassified: ClassifiedError | null = null;
 
   try {
     while (attempts < maxAttempts) {
@@ -82,16 +93,28 @@ export async function executeRoutine(
         lastError = error instanceof Error ? error : new Error(String(error));
       }
 
+      lastClassified = classifyError(lastError!);
+
+      // Stop retrying on permanent errors
+      if (!lastClassified.transient && attempts < maxAttempts) {
+        await appendLogLine(
+          logPath,
+          `[runtime] permanent error (${lastClassified.kind}), skipping remaining retries`,
+        );
+        break;
+      }
+
       run = store.updateRun(run.id, {
         status: "running",
       });
 
       if (attempts < maxAttempts) {
+        const delaySec = backoffSchedule[Math.min(attempts - 1, backoffSchedule.length - 1)] ?? 5;
         await appendLogLine(
           logPath,
-          `[runtime] attempt ${attempts} failed, retrying in ${backoffSeconds}s`,
+          `[runtime] attempt ${attempts} failed (${lastClassified.kind}), retrying in ${delaySec}s`,
         );
-        await sleep(backoffSeconds * 1_000);
+        await sleep(delaySec * 1_000);
       }
     }
 
@@ -99,9 +122,12 @@ export async function executeRoutine(
       status: "failed",
       endedAt: isoNow(),
       exitCode: run.exitCode ?? 1,
-      summary: `Failed after ${attempts} attempt(s).`,
+      summary: `Failed after ${attempts} attempt(s). Error: ${lastClassified?.kind ?? "unknown"}.`,
       errorMessage: lastError?.message ?? "Unknown failure",
     });
+
+    // Fire failure webhook if configured
+    await fireFailureNotification(routine, run);
 
     return { run, attempts };
   } finally {
@@ -390,6 +416,82 @@ function resolveWorkingDirectory(routine: StoredRoutine): string {
   }
 
   return resolve(dirname(routine.sourcePath), configuredWorkingDir);
+}
+
+async function fireFailureNotification(
+  routine: StoredRoutine,
+  run: RunRecord,
+): Promise<void> {
+  const notify = routine.document.policy?.notify;
+  if (!notify) return;
+
+  try {
+    if (notify.type === "desktop") {
+      await sendDesktopNotification(routine, run);
+    } else if (notify.type === "webhook") {
+      await sendWebhookNotification(routine, run, notify);
+    }
+  } catch {
+    // Swallow notification errors — don't fail the run because of notification
+  }
+}
+
+async function sendDesktopNotification(
+  routine: StoredRoutine,
+  run: RunRecord,
+): Promise<void> {
+  const title = "Open Routines";
+  const message = `"${routine.name}" failed: ${run.errorMessage?.slice(0, 200) ?? "unknown error"}`;
+
+  if (process.platform === "darwin") {
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execFileAsync = promisify(execFile);
+    await execFileAsync("osascript", [
+      "-e",
+      `display notification ${JSON.stringify(message)} with title ${JSON.stringify(title)} sound name "Basso"`,
+    ]);
+  } else if (process.platform === "linux") {
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execFileAsync = promisify(execFile);
+    await execFileAsync("notify-send", [title, message]).catch(() => {
+      // notify-send not available
+    });
+  }
+  // Windows: could use powershell toast, skip for now
+}
+
+async function sendWebhookNotification(
+  routine: StoredRoutine,
+  run: RunRecord,
+  notify: import("@open-routines/core").WebhookNotify,
+): Promise<void> {
+  const response = await fetch(notify.webhookUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...notify.headers,
+    },
+    body: JSON.stringify({
+      event: "routine.failed",
+      routine: { name: routine.name, id: routine.id },
+      run: {
+        id: run.id,
+        status: run.status,
+        errorMessage: run.errorMessage,
+        summary: run.summary,
+        startedAt: run.startedAt,
+        endedAt: run.endedAt,
+      },
+      timestamp: isoNow(),
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  if (!response.ok) {
+    console.error(`[notify] webhook returned ${response.status}`);
+  }
 }
 
 async function appendLogLine(logPath: string, line: string): Promise<void> {

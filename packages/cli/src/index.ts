@@ -292,7 +292,25 @@ export function createProgram(): Command {
     .command("run")
     .argument("<name>", "routine name")
     .option("--home <path>", "override the routines home directory")
-    .action(async (name: string, options: { home?: string }) => {
+    .option("--detach", "run in background and return immediately with run info")
+    .action(async (name: string, options: { home?: string; detach?: boolean }) => {
+      if (options.detach) {
+        const binPath = fileURLToPath(new URL("./bin/routines.js", import.meta.url));
+        const args = [binPath, "routine", "run", name];
+        if (options.home) args.push("--home", options.home);
+        const child = spawn(process.execPath, args, {
+          detached: true,
+          stdio: "ignore",
+        });
+        child.unref();
+        console.log(JSON.stringify({
+          detached: true,
+          pid: child.pid,
+          routine: name,
+          message: `Running in background (pid ${child.pid}). Check status with: routines run list`,
+        }, null, 2));
+        return;
+      }
       const result = await executeRoutineByName(name, options.home, {
         triggerType: "manual",
       });

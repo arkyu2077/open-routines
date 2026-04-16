@@ -26,7 +26,7 @@ execution:
   );
 
   assert.equal(loaded.document.policy?.retry?.maxAttempts, 1);
-  assert.equal(loaded.document.policy?.timeoutSeconds, 1800);
+  assert.equal(loaded.document.policy?.timeoutSeconds, 3600);
   assert.equal(loaded.sourcePath, "/tmp/morning.yaml");
   assert.ok(loaded.nextRunAt);
 });

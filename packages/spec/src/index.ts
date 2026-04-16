@@ -65,10 +65,23 @@ const routineSchema = z.object({
         .object({
           maxAttempts: z.number().int().min(1).max(10).optional(),
           backoffSeconds: z.number().int().min(0).max(3_600).optional(),
+          backoffSchedule: z.array(z.number().min(0).max(3_600)).max(10).optional(),
         })
         .optional(),
       timeoutSeconds: z.number().int().min(1).max(86_400).optional(),
       concurrency: z.number().int().min(1).max(10).optional(),
+      notify: z
+        .discriminatedUnion("type", [
+          z.object({
+            type: z.literal("webhook"),
+            webhookUrl: z.string().url(),
+            headers: z.record(z.string(), z.string()).optional(),
+          }),
+          z.object({
+            type: z.literal("desktop"),
+          }),
+        ])
+        .optional(),
     })
     .optional(),
 });
@@ -86,10 +99,12 @@ export function validateRoutineDocument(input: unknown): RoutineDocument {
         backoffSeconds:
           parsed.policy?.retry?.backoffSeconds ??
           DEFAULT_RETRY_BACKOFF_SECONDS,
+        backoffSchedule: parsed.policy?.retry?.backoffSchedule,
       },
       timeoutSeconds:
         parsed.policy?.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS,
       concurrency: parsed.policy?.concurrency ?? 1,
+      notify: parsed.policy?.notify,
     },
   };
 }

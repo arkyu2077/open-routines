@@ -1,0 +1,18 @@
+version: 1
+name: cowork-case-collector
+description: Daily collection of Claude Cowork user cases from Reddit/HN/News into coworkflows site.
+trigger:
+  type: schedule
+  cron: "0 11 * * *"
+  timezone: Asia/Shanghai
+provider:
+  type: modelsrouter
+  model: gpt-5.4
+  connection: default
+execution:
+  type: skill
+  tool: claude
+  skill: cowork-case-collector
+  workingDir: /Users/yuxh-mac/Desktop/yu/coworkflows
+policy:
+  timeoutSeconds: 1200

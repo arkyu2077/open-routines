@@ -66,13 +66,64 @@ export type ExecutionSpec = CommandExecutionSpec | PromptExecutionSpec | SkillEx
 export interface RetryPolicy {
   maxAttempts?: number;
   backoffSeconds?: number;
+  backoffSchedule?: number[];
 }
+
+export interface WebhookNotify {
+  type: "webhook";
+  webhookUrl: string;
+  headers?: Record<string, string>;
+}
+
+export interface DesktopNotify {
+  type: "desktop";
+}
+
+export type FailureNotify = WebhookNotify | DesktopNotify;
 
 export interface RoutinePolicy {
   retry?: RetryPolicy;
   timeoutSeconds?: number;
   concurrency?: number;
+  notify?: FailureNotify;
 }
+
+// --- Error classification ---
+
+export type ErrorKind =
+  | "rate_limit"
+  | "overloaded"
+  | "timeout"
+  | "network"
+  | "server_error"
+  | "auth"
+  | "permanent";
+
+export interface ClassifiedError {
+  kind: ErrorKind;
+  transient: boolean;
+  message: string;
+}
+
+const TRANSIENT_PATTERNS: Array<{ pattern: RegExp; kind: ErrorKind }> = [
+  { pattern: /rate.?limit|429|too many requests/i, kind: "rate_limit" },
+  { pattern: /overloaded|503|529|capacity/i, kind: "overloaded" },
+  { pattern: /timeout|timed?\s*out|ETIMEDOUT|ESOCKETTIMEDOUT/i, kind: "timeout" },
+  { pattern: /ECONNRESET|ECONNREFUSED|ENOTFOUND|network|fetch failed/i, kind: "network" },
+  { pattern: /500|502|internal server error|bad gateway/i, kind: "server_error" },
+];
+
+export function classifyError(error: Error | string): ClassifiedError {
+  const message = typeof error === "string" ? error : error.message;
+  for (const { pattern, kind } of TRANSIENT_PATTERNS) {
+    if (pattern.test(message)) {
+      return { kind, transient: true, message };
+    }
+  }
+  return { kind: "permanent", transient: false, message };
+}
+
+export const DEFAULT_BACKOFF_SCHEDULE = [5, 30, 60, 300, 600];
 
 export interface RoutineDocument {
   version: 1;
@@ -240,7 +291,7 @@ export interface DaemonStatus {
 
 export const DEFAULT_HOME_DIRNAME = ".routines";
 export const DEFAULT_POLL_INTERVAL_MS = 15_000;
-export const DEFAULT_TIMEOUT_SECONDS = 1_800;
+export const DEFAULT_TIMEOUT_SECONDS = 3_600;
 export const DEFAULT_RETRY_BACKOFF_SECONDS = 5;
 
 export function isoNow(date = new Date()): string {
