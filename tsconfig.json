@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/spec" },
+    { "path": "./packages/auth" },
+    { "path": "./packages/store" },
+    { "path": "./packages/providers" },
+    { "path": "./packages/runtime" },
+    { "path": "./packages/sdk" },
+    { "path": "./packages/daemon" },
+    { "path": "./packages/cli" }
+  ]
+}

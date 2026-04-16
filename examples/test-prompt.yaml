@@ -1,0 +1,16 @@
+version: 1
+name: test-prompt
+description: Test prompt execution via modelsrouter.
+trigger:
+  type: schedule
+  cron: "0 * * * *"
+provider:
+  type: modelsrouter
+  model: gpt-5.4
+  connection: default
+execution:
+  type: prompt
+  input: "Say hello in one sentence."
+  outputPath: output/test-prompt.txt
+policy:
+  timeoutSeconds: 30

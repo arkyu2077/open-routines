@@ -1,0 +1,17 @@
+version: 1
+name: daily-backlink
+description: Run the backlink skill twice daily to build SEO links.
+trigger:
+  type: schedule
+  cron: "0 10,15 * * *"
+  timezone: Asia/Shanghai
+provider:
+  type: gpt
+  model: gpt-4o
+execution:
+  type: skill
+  tool: claude
+  skill: backlink
+  workingDir: ~/Desktop/yu/backlink
+policy:
+  timeoutSeconds: 600

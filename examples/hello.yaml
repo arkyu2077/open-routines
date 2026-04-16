@@ -1,0 +1,16 @@
+version: 1
+name: hello-world
+description: A minimal local routine that writes a hello file.
+trigger:
+  type: schedule
+  cron: "0 * * * *"
+provider:
+  type: gpt
+  model: gpt-5
+execution:
+  type: command
+  command: "printf 'hello from open routines\\n' > hello.txt"
+policy:
+  retry:
+    maxAttempts: 1
+  timeoutSeconds: 60

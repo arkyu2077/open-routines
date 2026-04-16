@@ -1,0 +1,19 @@
+version: 1
+name: weekly-qa
+description: Run QA testing on the video upscaler site every Monday morning.
+trigger:
+  type: schedule
+  cron: "0 9 * * 1"
+  timezone: Asia/Shanghai
+provider:
+  type: gpt
+  model: gpt-4o
+execution:
+  type: skill
+  tool: claude
+  skill: qa
+  args: "https://videoupscaler.ai"
+  prompt: "Run a quick QA pass on the production site."
+  workingDir: ~/Desktop/yu/video-upscaler-site
+policy:
+  timeoutSeconds: 900

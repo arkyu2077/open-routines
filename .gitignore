@@ -1,0 +1,11 @@
+node_modules
+dist
+*.tsbuildinfo
+.DS_Store
+.pnpm-store
+coverage
+.turbo
+.routines
+*.log
+hello.txt
+examples/output/

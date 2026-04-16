@@ -1,0 +1,18 @@
+version: 1
+name: daily-summary
+description: Ask AI to generate a daily motivational summary every morning.
+trigger:
+  type: schedule
+  cron: "0 8 * * *"
+  timezone: Asia/Shanghai
+provider:
+  type: gpt
+  model: gpt-4o
+execution:
+  type: prompt
+  input: >
+    Generate a short motivational message for a solo founder
+    working on SaaS products. Keep it under 3 sentences.
+  outputPath: output/daily-summary.txt
+policy:
+  timeoutSeconds: 30

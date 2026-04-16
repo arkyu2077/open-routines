@@ -1,0 +1,36 @@
+{
+  "name": "@open-routines/cli",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "routines": "dist/bin/routines.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b && chmod +x dist/bin/routines.js",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@open-routines/auth": "workspace:*",
+    "@open-routines/core": "workspace:*",
+    "@open-routines/daemon": "workspace:*",
+    "@open-routines/providers": "workspace:*",
+    "@open-routines/runtime": "workspace:*",
+    "@open-routines/sdk": "workspace:*",
+    "@open-routines/spec": "workspace:*",
+    "@open-routines/store": "workspace:*",
+    "commander": "^14.0.1"
+  }
+}

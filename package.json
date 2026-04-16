@@ -1,0 +1,23 @@
+{
+  "name": "open-routines-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "packageManager": "pnpm@10.11.0",
+  "type": "module",
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "test": "tsx --test packages/*/src/**/*.test.ts",
+    "smoke": "node scripts/smoke.mjs",
+    "verify": "pnpm clean && pnpm build && pnpm test && pnpm smoke",
+    "cli": "tsx packages/cli/src/bin/routines.ts",
+    "daemon:once": "tsx packages/cli/src/bin/routines.ts daemon start --foreground --once"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

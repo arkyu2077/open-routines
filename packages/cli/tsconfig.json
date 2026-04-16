@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../auth" },
+    { "path": "../core" },
+    { "path": "../daemon" },
+    { "path": "../providers" },
+    { "path": "../runtime" },
+    { "path": "../sdk" },
+    { "path": "../spec" },
+    { "path": "../store" }
+  ]
+}
